@@ -44,7 +44,8 @@ namespace ChatRoom.Services
             {
                 return false;
             }
-
+            // Track per-shift total as well
+            agent.TotalChatsDuringShift++;
             session.AssignedAgent = agent;
             session.Status = SessionStatus.Active;
             agent.ActiveChats.Add(session);
@@ -74,7 +75,7 @@ namespace ChatRoom.Services
             // assign to junior most first and that too with lower number of chats
             var agent = availableAgents
                 .OrderBy(a => GetSeniorityPriority(a.Seniority))
-                .ThenBy(a => a.ActiveChats.Count)
+                .ThenBy(a => a.ActiveChats.Count).ThenBy(a => a.TotalChatsDuringShift)
                 .FirstOrDefault();
 
             return agent;
@@ -151,6 +152,14 @@ namespace ChatRoom.Services
                     isInTransition = a.IsInShiftTransition
                 }).ToList()
             };
+        }
+
+        // Called when a shift transition is detected. Returns a summary of totals for the ended shift
+        public void HandleShiftTransition(/*ShiftType endedShift, ShiftType startedShift*/)
+        {
+            var allAgents = _teamService.GetAllAgents();
+
+            var perAgent = allAgents.Select(a => a.TotalChatsDuringShift = 0).ToList();
         }
     }
 }

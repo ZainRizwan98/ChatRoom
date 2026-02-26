@@ -16,6 +16,8 @@ namespace ChatRoom.Models
         public List<Session> ActiveChats { get; set; } = new();
         public bool IsAvailable { get; set; } = true;
         public bool IsInShiftTransition { get; set; } = false;
+        // Total chats handled during the current shift
+        public int TotalChatsDuringShift { get; set; } = 0;
 
         public int MaxConcurrentChats => (int)(10 * GetEfficiencyMultiplier());
 

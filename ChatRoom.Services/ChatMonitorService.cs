@@ -12,6 +12,7 @@ namespace ChatRoom.Services
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly TimeSpan _monitorInterval = TimeSpan.FromSeconds(15);
+        private ChatRoom.Models.Enums.ShiftType? _lastShift = null;
 
         public ChatMonitorService(
             IServiceProvider serviceProvider)
@@ -26,8 +27,28 @@ namespace ChatRoom.Services
                 try
                 {
                     using var scope = _serviceProvider.CreateScope();
+                    var teamService = scope.ServiceProvider.GetRequiredService<TeamManagementService>();
                     var queueService = scope.ServiceProvider.GetRequiredService<QueueService>();
                     var assignmentService = scope.ServiceProvider.GetRequiredService<ChatAssignmentService>();
+
+                    // detect shift transitions
+                    var currentShift = teamService.GetCurrentShift();
+                    if (_lastShift == null)
+                    {
+                        _lastShift = currentShift;
+                    }
+                    else if (_lastShift != currentShift)
+                    {
+                        // handle end of previous shift
+                        assignmentService.HandleShiftTransition();
+                        try
+                        {
+                            // minimal action: log the summary to console. Consumers can expand this: persist to DB, emit events, etc.
+                            Console.WriteLine($"Shift changed from {_lastShift} to {currentShift}.");
+                        }
+                        catch { }
+                        _lastShift = currentShift;
+                    }
 
                     await MonitorInactiveSessions(queueService, assignmentService);
 
