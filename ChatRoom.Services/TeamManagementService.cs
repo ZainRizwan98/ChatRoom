@@ -30,7 +30,7 @@ namespace ChatRoom.Services
                     new Agent { Id = Guid.NewGuid(), Name = "MidLevel A1", Seniority = Seniority.MidLevel },
                     new Agent { Id = Guid.NewGuid(), Name = "MidLevel A2", Seniority = Seniority.MidLevel },
                     new Agent { Id = Guid.NewGuid(), Name = "Junior A1", Seniority = Seniority.Junior },
-                    new Agent { Id = Guid.NewGuid(), Name = "Junior A2", Seniority = Seniority.Junior }
+                   // new Agent { Id = Guid.NewGuid(), Name = "Junior A2", Seniority = Seniority.Junior }
                 }
             };
 
