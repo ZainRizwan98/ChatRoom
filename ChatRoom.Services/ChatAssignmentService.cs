@@ -89,6 +89,7 @@ namespace ChatRoom.Services
                 Seniority.MidLevel => 2,
                 Seniority.Senior => 3,
                 Seniority.TeamLead => 4,
+                _ => 5
             };
         }
 

@@ -10,9 +10,9 @@ namespace ChatRoom.Models
     public class Agent
     {
         public Guid Id { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; }  = string.Empty;
         public Seniority Seniority { get; set; }
-        public Team Team { get; set; }
+        public Team Team { get; set; } = new Team();
         public List<Session> ActiveChats { get; set; } = new();
         public bool IsAvailable { get; set; } = true;
         public bool IsInShiftTransition { get; set; } = false;

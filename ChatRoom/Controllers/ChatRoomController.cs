@@ -40,7 +40,7 @@ namespace ChatRoom.Controllers
             return Ok(new CreateChatSessionResponse
             {
                 Success = true,
-                SessionId = session.Id,
+                SessionId = session?.Id,
                 Status = "queued"
             });
         }

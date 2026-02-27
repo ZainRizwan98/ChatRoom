@@ -56,7 +56,7 @@ namespace ChatRoom.Services
 
                     await Task.Delay(_monitorInterval, stoppingToken);
                 }
-                catch (Exception ex)
+                catch
                 {
                     await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
                 }

@@ -10,7 +10,7 @@ namespace ChatRoom.Models
     public class Session
     {
         public Guid Id { get; set; }
-        public string UserId { get; set; }
+        public string UserId { get; set; }  = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime LastPollTime { get; set; }
         public SessionStatus Status { get; set; }
