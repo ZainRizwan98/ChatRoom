@@ -14,6 +14,8 @@ namespace ChatRoom.Models
         public DateTime CreatedAt { get; set; }
         public DateTime LastPollTime { get; set; }
         public SessionStatus Status { get; set; }
+        // Indicates whether this session was placed into the overflow queue
+        public bool IsOverflow { get; set; } = false;
         public Agent? AssignedAgent { get; set; }
         public int MissedPolls { get; set; } = 0;
         public List<Message> Messages { get; set; } = new();

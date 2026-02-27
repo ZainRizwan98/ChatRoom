@@ -11,8 +11,8 @@ namespace ChatRoom.Services
 {
     public class QueueService
     {
-        private readonly ConcurrentQueue<Session> _mainQueue = new();
-        private readonly ConcurrentQueue<Session> _overflowQueue = new();
+        private readonly Queue<Session> _queue = new();
+        private readonly object _queueLock = new();
         private readonly ConcurrentDictionary<Guid, Session> _activeSessions = new();
         private readonly TeamManagementService _teamService;
 
@@ -21,8 +21,27 @@ namespace ChatRoom.Services
             _teamService = teamService;
         }
 
-        public int MainQueueCount => _mainQueue.Count;
-        public int OverflowQueueCount => _overflowQueue.Count;
+        public int MainQueueCount
+        {
+            get
+            {
+                lock (_queueLock)
+                {
+                    return _queue.Count(s => !s.IsOverflow);
+                }
+            }
+        }
+
+        public int OverflowQueueCount
+        {
+            get
+            {
+                lock (_queueLock)
+                {
+                    return _queue.Count(s => s.IsOverflow);
+                }
+            }
+        }
         public int ActiveSessionCount => _activeSessions.Count;
 
         public async Task<(bool Success, Session? Session, string? ErrorMessage)> EnqueueChatRequest(string userId)
@@ -31,23 +50,32 @@ namespace ChatRoom.Services
             var totalCapacity = currentTeams.Sum(t => t.TotalCapacity);
             var maxQueueLength = (int)(totalCapacity * 1.5);
 
-            // Check if main queue is full
-            if (_mainQueue.Count >= maxQueueLength)
+            int mainCount;
+            int overflowCount;
+            lock (_queueLock)
             {
-                // Check if we're in office hours and can use overflow
+                mainCount = _queue.Count(s => !s.IsOverflow);
+                overflowCount = _queue.Count(s => s.IsOverflow);
+            }
+
+            // If main queue is full, consider overflow (when in office hours)
+            if (mainCount >= maxQueueLength)
+            {
                 if (_teamService.IsOfficeHours())
                 {
                     var overflowTeam = _teamService.GetOverflowTeam();
                     var overflowMaxQueue = (int)(overflowTeam.TotalCapacity * 1.5);
 
-                    if (_overflowQueue.Count >= overflowMaxQueue)
+                    if (overflowCount >= overflowMaxQueue)
                     {
                         return (false, null, "No agents available. Both queues are full. Please try again later.");
                     }
 
-                    // Add to overflow queue
                     var overflowSession = CreateChatSession(userId, isOverflow: true);
-                    _overflowQueue.Enqueue(overflowSession);
+                    lock (_queueLock)
+                    {
+                        _queue.Enqueue(overflowSession);
+                    }
                     _activeSessions.TryAdd(overflowSession.Id, overflowSession);
                     return (true, overflowSession, null);
                 }
@@ -59,7 +87,10 @@ namespace ChatRoom.Services
 
             // Add to main queue
             var session = CreateChatSession(userId, isOverflow: false);
-            _mainQueue.Enqueue(session);
+            lock (_queueLock)
+            {
+                _queue.Enqueue(session);
+            }
             _activeSessions.TryAdd(session.Id, session);
             return (true, session, null);
         }
@@ -72,7 +103,8 @@ namespace ChatRoom.Services
                 UserId = userId,
                 CreatedAt = DateTime.UtcNow,
                 LastPollTime = DateTime.UtcNow,
-                Status = SessionStatus.Queued
+                Status = SessionStatus.Queued,
+                IsOverflow = isOverflow
             };
         }
 
@@ -92,13 +124,34 @@ namespace ChatRoom.Services
 
         public Session? DequeueNextSession(bool fromOverflow = false)
         {
-            var queue = fromOverflow ? _overflowQueue : _mainQueue;
-
-            if (queue.TryDequeue(out var session))
+            // Dequeue the next session that matches the requested overflow flag.
+            lock (_queueLock)
             {
-                return session;
+                if (_queue.Count == 0)
+                    return null;
+
+                var temp = new List<Session>();
+                Session? found = null;
+
+                while (_queue.Count > 0)
+                {
+                    var s = _queue.Dequeue();
+                    if (found == null && s.IsOverflow == fromOverflow)
+                    {
+                        found = s;
+                        break;
+                    }
+                    temp.Add(s);
+                }
+
+                // Put back the skipped sessions in the same order
+                for (int i = 0; i < temp.Count; i++)
+                {
+                    _queue.Enqueue(temp[i]);
+                }
+
+                return found;
             }
-            return null;
         }
 
         public void RemoveSession(Guid sessionId)
